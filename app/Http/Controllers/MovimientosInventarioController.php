@@ -4,7 +4,8 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\MovimientosInventario;
-use App\Models\Producto; // Importar el modelo Producto
+use App\Models\Producto;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Validator;
 
 class MovimientosInventarioController extends Controller
@@ -44,6 +45,7 @@ class MovimientosInventarioController extends Controller
             return response()->json($th->getMessage(), 500);
         }
     }
+   
 
     /**
      * Almacena un nuevo movimiento de inventario en la base de datos.
@@ -277,4 +279,29 @@ class MovimientosInventarioController extends Controller
             return response()->json($th->getMessage(), 500);
         }
     }
+
+    public function reporteMovimientosDiarios(Request $request)
+{
+    $fecha = $request->input('fecha');
+    $movimientos = MovimientosInventario::with('producto')->whereDate('fecha', $fecha)->get();
+    $pdf = Pdf::loadView('reportes.movimientos_diarios', compact('movimientos'));
+    return $pdf->download('reporte_movimientos_diarios.pdf');
+}
+
+public function reporteMovimientosPorProducto(Request $request)
+{
+    $productoId = $request->input('producto_id');
+    $movimientos = MovimientosInventario::with('producto')->where('fk_productos', $productoId)->get();
+    $pdf = Pdf::loadView('reportes.movimientos_por_producto', compact('movimientos'));
+    return $pdf->download('reporte_movimientos_por_producto.pdf');
+}
+
+public function reporteInventarioActual()
+{
+    $inventario = Producto::withSum('movimientos as cantidad_total', 'cantidad')->get();
+    $pdf = Pdf::loadView('reportes.inventario_actual', compact('inventario'));
+    return $pdf->download('reporte_inventario_actual.pdf');
+}
+
+
 }

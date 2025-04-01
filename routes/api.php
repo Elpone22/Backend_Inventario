@@ -12,7 +12,7 @@ use App\Http\Controllers\MaquinariaController;
 use App\Http\Controllers\ProyectosController;
 use App\Http\Controllers\MovimientosInventarioController;
 
-
+use Barryvdh\DomPDF\Facade\Pdf;
  
 //rutas para crud
 Route::middleware('auth:sanctum')->group(function () {
@@ -34,6 +34,9 @@ Route::apiResource('/marcas', MarcaController::class);
 Route::apiResource('/users',UserController::class);
 Route::apiResource('/movimientos_inventarios', MovimientosInventarioController::class);
 
+Route::get('/reportes/movimientos-diarios', [MovimientosInventarioController::class, 'reporteMovimientosDiarios']);
+Route::get('/reportes/movimientos-por-producto', [MovimientosInventarioController::class, 'reporteMovimientosPorProducto']);
+Route::get('/reportes/inventario-actual', [MovimientosInventarioController::class, 'reporteInventarioActual']);
 
 
 

@@ -2,13 +2,24 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
 class Producto extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['nombre', 'precio', 'cantidad', 'descripcion', 'fk_marca', 'fk_categoria', 'imagen'];
+    protected $table = 'productos';
 
+    protected $fillable = [
+        'nombre',
+        'descripcion',
+        'precio',
+        'cantidad',
+    ];
+
+    public function movimientos()
+    {
+        return $this->hasMany(MovimientosInventario::class, 'fk_productos');
+    }
 }
