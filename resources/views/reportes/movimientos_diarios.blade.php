@@ -1,28 +1,38 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Reporte de Movimientos Diarios</title>
+    <title>Movimientos Diarios</title>
+    <style>
+        /* Estilos similares a los que usamos en inventario_actual */
+        .table { width: 100%; border-collapse: collapse; }
+        .table th { background: #f3f3f3; padding: 8px; }
+        .table td { padding: 6px; border-top: 1px solid #ddd; }
+        .text-success { color: green; }
+        .text-danger { color: red; }
+    </style>
 </head>
 <body>
-    <h1>Reporte de Movimientos Diarios</h1>
-    <table border="1">
+    <h2>Movimientos Diarios - {{ $fecha }}</h2>
+    <table class="table">
         <thead>
             <tr>
-                <th>ID</th>
                 <th>Producto</th>
-                <th>Cantidad</th>
                 <th>Tipo</th>
-                <th>Fecha</th>
+                <th>Cantidad</th>
+                <th>Hora</th>
+                <th>Usuario</th>
             </tr>
         </thead>
         <tbody>
-            @foreach($movimientos as $movimiento)
+            @foreach($movimientos as $mov)
             <tr>
-                <td>{{ $movimiento->id }}</td>
-                <td>{{ $movimiento->producto ? $movimiento->producto->nombre : 'N/A' }}</td>
-                <td>{{ $movimiento->cantidad }}</td>
-                <td>{{ $movimiento->tipoMov }}</td>
-                <td>{{ $movimiento->fecha }}</td>
+                <td>{{ $mov->producto->nombre ?? 'N/A' }}</td>
+                <td class="{{ $mov->cantidad > 0 ? 'text-success' : 'text-danger' }}">
+                    {{ $mov->cantidad > 0 ? 'Entrada' : 'Salida' }}
+                </td>
+                <td>{{ abs($mov->cantidad) }}</td>
+                <td>{{ $mov->created_at->format('H:i') }}</td>
+                <td>{{ $mov->usuario->name ?? 'Sistema' }}</td>
             </tr>
             @endforeach
         </tbody>

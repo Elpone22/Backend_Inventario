@@ -284,21 +284,70 @@ class MovimientosInventarioController extends Controller
 {
     $fecha = $request->input('fecha');
     $movimientos = MovimientosInventario::with('producto')->whereDate('fecha', $fecha)->get();
-    $pdf = Pdf::loadView('reportes.movimientos_diarios', compact('movimientos'));
+    $pdf = Pdf::loadView('reportes.movimientos_diarios', compact('movimientos', 'fecha'));
     return $pdf->download('reporte_movimientos_diarios.pdf');
 }
 
 public function reporteMovimientosPorProducto(Request $request)
 {
     $productoId = $request->input('producto_id');
-    $movimientos = MovimientosInventario::with('producto')->where('fk_productos', $productoId)->get();
-    $pdf = Pdf::loadView('reportes.movimientos_por_producto', compact('movimientos'));
-    return $pdf->download('reporte_movimientos_por_producto.pdf');
+    \Log::info("Generando reporte para producto ID: $productoId");
+
+    $movimientos = MovimientosInventario::with(['producto' => function($query) {
+        $query->when(method_exists(Producto::class, 'categoria'), function($q) {
+            $q->with('categoria');
+        })
+        ->when(method_exists(Producto::class, 'marca'), function($q) {
+            $q->with('marca');
+        });
+    }])
+    ->where('fk_productos', $productoId)
+    ->get()
+    ->map(function($movimiento) use ($productoId) {
+        if ($movimiento->producto && $movimiento->producto->imagen) {
+            $path = public_path('storage/' . $movimiento->producto->imagen);
+            \Log::info("Buscando imagen en: $path");
+            
+            if (file_exists($path)) {
+                $movimiento->producto->imagen_url = 'data:image/'.pathinfo($path, PATHINFO_EXTENSION).';base64,'.base64_encode(file_get_contents($path));
+                \Log::info("Imagen encontrada y convertida a base64");
+            } else {
+                \Log::error("Imagen NO encontrada en: $path");
+                $movimiento->producto->imagen_url = null;
+            }
+        }
+        return $movimiento;
+    });
+
+    \Log::info("Datos para la vista:", [
+        'producto' => $movimientos->first()->producto ?? null,
+        'total_movimientos' => $movimientos->count()
+    ]);
+
+    $pdf = Pdf::loadView('reportes.movimientos_por_producto', [
+        'movimientos' => $movimientos,
+        'producto' => $movimientos->first()->producto ?? null
+    ]);
+    
+    return $pdf->stream('reporte_movimientos_por_producto.pdf');
 }
 
 public function reporteInventarioActual()
 {
-    $inventario = Producto::withSum('movimientos as cantidad_total', 'cantidad')->get();
+    $inventario = Producto::withSum('movimientos as cantidad_total', 'cantidad')
+        ->get()
+        ->map(function ($producto) {
+            if ($producto->imagen) {
+                $path = public_path('storage/' . $producto->imagen);
+                if (file_exists($path)) {
+                    $producto->imagen = 'data:image/'.pathinfo($path, PATHINFO_EXTENSION).';base64,'.base64_encode(file_get_contents($path));
+                } else {
+                    $producto->imagen = null;
+                }
+            }
+            return $producto;
+        });
+
     $pdf = Pdf::loadView('reportes.inventario_actual', compact('inventario'));
     return $pdf->download('reporte_inventario_actual.pdf');
 }

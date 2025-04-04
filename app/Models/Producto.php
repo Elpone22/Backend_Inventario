@@ -22,4 +22,15 @@ class Producto extends Model
     {
         return $this->hasMany(MovimientosInventario::class, 'fk_productos');
     }
+
+        // En app/Models/Producto.php
+    public function categoria()
+    {
+        return $this->belongsTo(Categoria::class, 'fk_categoria');
+    }
+
+    public function marca()
+    {
+        return $this->belongsTo(Marca::class, 'fk_marca');
+    }
 }
