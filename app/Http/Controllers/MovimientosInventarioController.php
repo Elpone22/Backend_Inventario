@@ -16,32 +16,30 @@ class MovimientosInventarioController extends Controller
     public function index()
     {
         try {
-            // Query para consultar movimientos de inventario
             $movimientos = MovimientosInventario::select(
                 'movimientos_inventarios.id',
                 'movimientos_inventarios.cantidad',
                 'movimientos_inventarios.fecha',
                 'movimientos_inventarios.tipoMov',
-                'productos.nombre as producto' // Nombre del producto
+                'productos.nombre as producto',
+                'users.name as usuario'
             )
-            ->join('productos', 'movimientos_inventarios.fk_productos', '=', 'productos.id') // Relación con productos
+            ->join('productos', 'movimientos_inventarios.fk_productos', '=', 'productos.id')
+            ->leftJoin('users', 'movimientos_inventarios.user_id', '=', 'users.id')
             ->get();
 
             if ($movimientos->count() > 0) {
-                // Si hay movimientos, se retorna el listado en un JSON
                 return response()->json([
                     'code' => 200,
                     'data' => $movimientos
                 ], 200);
             } else {
-                // Si no hay movimientos, se retorna un mensaje
                 return response()->json([
                     'code' => 404,
                     'data' => 'No hay movimientos realizados'
                 ], 404);
             }
         } catch (\Throwable $th) {
-            // Manejo de errores
             return response()->json($th->getMessage(), 500);
         }
     }
@@ -52,64 +50,65 @@ class MovimientosInventarioController extends Controller
      */
     public function store(Request $request)
     {
-        // Reglas de validación
         $rules = [
             'cantidad' => 'required|numeric',
             'fecha' => 'required|date',
             'tipoMov' => 'required|in:Entrada,Salida',
             'fk_productos' => 'required|exists:productos,id',
+            'user_id' => 'required|exists:users,id' // Añadir validación para user_id
         ];
-
-        // Mensajes de error personalizados (opcional)
+    
         $messages = [
             'cantidad.required' => 'La cantidad es obligatoria.',
             'fecha.required' => 'La fecha es obligatoria.',
             'tipoMov.required' => 'El tipo de movimiento es obligatorio.',
             'fk_productos.required' => 'El producto es obligatorio.',
+            'user_id.required' => 'El usuario es obligatorio.', // Nuevo mensaje
+            'user_id.exists' => 'El usuario no existe.' // Nuevo mensaje
         ];
-
-        // Validar los datos
+    
         $validator = Validator::make($request->all(), $rules, $messages);
-
-        // Si la validación falla
+    
         if ($validator->fails()) {
             return response()->json([
                 'code' => 400,
                 'errors' => $validator->errors()
             ], 400);
         }
-
-        // Obtener el producto asociado
+    
         $producto = Producto::find($request->fk_productos);
-
+    
         if (!$producto) {
             return response()->json([
                 'code' => 404,
                 'data' => 'Producto no encontrado'
             ], 404);
         }
-
-        // Validar que no se reste más de la cantidad disponible
+    
         if ($request->tipoMov === 'Salida' && $request->cantidad > $producto->cantidad) {
             return response()->json([
                 'code' => 400,
                 'data' => 'No hay suficiente cantidad.'
             ], 400);
         }
-
-        // Crear el movimiento
-        $movimiento = MovimientosInventario::create($request->all());
-
-        // Actualizar la cantidad del producto según el tipo de movimiento
+    
+        // Crear el movimiento usando el user_id recibido del frontend
+        $movimiento = MovimientosInventario::create([
+            'cantidad' => $request->cantidad,
+            'fecha' => $request->fecha,
+            'tipoMov' => $request->tipoMov,
+            'fk_productos' => $request->fk_productos,
+            'user_id' => $request->user_id // Usar el user_id enviado desde el frontend
+        ]);
+    
         if ($request->tipoMov === 'Entrada') {
-            $producto->cantidad += $request->cantidad; // Sumar la cantidad
+            $producto->cantidad += $request->cantidad;
         } elseif ($request->tipoMov === 'Salida') {
-            $producto->cantidad -= $request->cantidad; // Restar la cantidad
+            $producto->cantidad -= $request->cantidad;
         }
-
-        // Guardar los cambios en el producto
+    
         $producto->save();
-
+    
         return response()->json([
             'code' => 200,
             'data' => 'Movimiento realizado'
@@ -121,33 +120,31 @@ class MovimientosInventarioController extends Controller
     public function show(string $id)
     {
         try {
-            // Query para consultar un movimiento específico
             $movimiento = MovimientosInventario::select(
                 'movimientos_inventarios.id',
                 'movimientos_inventarios.cantidad',
                 'movimientos_inventarios.fecha',
                 'movimientos_inventarios.tipoMov',
-                'productos.nombre as producto' // Nombre del producto
+                'productos.nombre as producto',
+                'users.name as usuario'
             )
-            ->join('productos', 'movimientos_inventarios.fk_productos', '=', 'productos.id') // Relación con productos
-            ->where('movimientos_inventarios.id', $id) // Filtrar por ID
-            ->first(); // Obtener el primer resultado
+            ->join('productos', 'movimientos_inventarios.fk_productos', '=', 'productos.id')
+            ->leftJoin('users', 'movimientos_inventarios.user_id', '=', 'users.id')
+            ->where('movimientos_inventarios.id', $id)
+            ->first();
 
             if ($movimiento) {
-                // Si el movimiento existe, se retorna en un JSON
                 return response()->json([
                     'code' => 200,
                     'data' => $movimiento
                 ], 200);
             } else {
-                // Si el movimiento no existe, se retorna un mensaje
                 return response()->json([
                     'code' => 404,
                     'data' => 'Movimiento no encontrado'
                 ], 404);
             }
         } catch (\Throwable $th) {
-            // Manejo de errores
             return response()->json($th->getMessage(), 500);
         }
     }

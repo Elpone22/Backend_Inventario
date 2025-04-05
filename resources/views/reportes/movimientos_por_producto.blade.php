@@ -48,7 +48,7 @@
                 @foreach($movimientos as $mov)
                 <tr>
                     <td>{{ $mov->created_at->format('d/m/Y H:i') }}</td>
-                    <td>{{ $mov->cantidad > 0 ? 'Entrada' : 'Salida' }}</td>
+                    <td>{{ $mov->tipoMov }}</td>
                     <td>{{ abs($mov->cantidad) }}</td>
                     <td>{{ $mov->usuario->name ?? 'Sistema' }}</td>
                 </tr>

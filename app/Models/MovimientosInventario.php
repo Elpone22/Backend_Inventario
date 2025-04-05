@@ -17,10 +17,15 @@ class MovimientosInventario extends Model
         'fecha',
         'tipoMov',
         'fk_productos',
+        'user_id'
     ];
 
     public function producto()
     {
         return $this->belongsTo(Producto::class, 'fk_productos');
+    }
+    public function usuario()
+    {
+        return $this->belongsTo(User::class, 'user_id');
     }
 }

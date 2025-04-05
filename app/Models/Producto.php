@@ -16,6 +16,10 @@ class Producto extends Model
         'descripcion',
         'precio',
         'cantidad',
+        'fk_categoria',
+        'fk_marca',
+        'imagen',
+
     ];
 
     public function movimientos()

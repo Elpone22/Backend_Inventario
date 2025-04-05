@@ -170,35 +170,33 @@ class UserController extends Controller
 
     public function login(Request $request){
         try {
-        // Se validan los campos que se reciben
             $validacion = Validator::make($request->all(),[
                 'email' => 'required',
                 'password' => 'required'
             ]);
+            
             if($validacion->fails()){
-            // Si la validación no se cumple, se retornan los mensajes de error
                 return response()->json([
                     'code' => 400,
                     'data' => $validacion->messages()
                 ], 400);
             } else {
-            // Se verifica que el email y password pertenezcan a un usuario
                 if(Auth::attempt(['email' => $request->email, 'password' => $request->password])){
-                // Se extraen los datos del usuario que coincida
-                $usuario = User::where('email', $request->email)->first();
-                return response()->json([
-                    'code' => 200,
-                    // Se retornan los datos del usuario
-                    'data' => $usuario,
-                    // Se crea un token para el usuario
-                    'token' => $usuario->createToken('api-key')->plainTextToken
+                    $usuario = User::where('email', $request->email)->first();
+                    return response()->json([
+                        'code' => 200,
+                        'data' => [
+                            'usuario' => $usuario->name,  // Nombre
+                            'id' => $usuario->id,         // ID
+                            'rol' => $usuario->rol,       // Rol
+                            'email' => $usuario->email    // Email
+                        ],
+                        'token' => $usuario->createToken('api-key')->plainTextToken
                     ], 200);
                 } else {
-                // Si el email y password no pertenecen a un usuario registrado,
-                // se retorna un mensaje con código 401
                     return response()->json([
-                    'code' => 401,
-                    'data' => 'Usuario no autorizado',
+                        'code' => 401,
+                        'data' => 'Usuario no autorizado',
                     ], 401);
                 }
             }
@@ -211,6 +209,7 @@ class UserController extends Controller
         try {
         // Se validan los campos que se reciben
             $validacion = Validator::make($request->all(), [
+                'id' => '',
                 'name' => 'required',
                 'email' => 'required|unique:users',
                 'password' => 'required',

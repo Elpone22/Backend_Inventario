@@ -6,7 +6,7 @@
         /* Estilos similares a los que usamos en inventario_actual */
         .table { width: 100%; border-collapse: collapse; }
         .table th { background: #f3f3f3; padding: 8px; }
-        .table td { padding: 6px; border-top: 1px solid #ddd; }
+        .table td { padding: 2px; border-top: 1px solid #ddd; }
         .text-success { color: green; }
         .text-danger { color: red; }
     </style>
@@ -19,7 +19,6 @@
                 <th>Producto</th>
                 <th>Tipo</th>
                 <th>Cantidad</th>
-                <th>Hora</th>
                 <th>Usuario</th>
             </tr>
         </thead>
@@ -28,10 +27,9 @@
             <tr>
                 <td>{{ $mov->producto->nombre ?? 'N/A' }}</td>
                 <td class="{{ $mov->cantidad > 0 ? 'text-success' : 'text-danger' }}">
-                    {{ $mov->cantidad > 0 ? 'Entrada' : 'Salida' }}
+                    {{ $mov->tipoMov}}
                 </td>
                 <td>{{ abs($mov->cantidad) }}</td>
-                <td>{{ $mov->created_at->format('H:i') }}</td>
                 <td>{{ $mov->usuario->name ?? 'Sistema' }}</td>
             </tr>
             @endforeach

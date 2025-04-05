@@ -18,10 +18,13 @@ return new class extends Migration
             $table->string('tipoMov');
             $table->unsignedBigInteger('fk_productos');
             $table->foreign('fk_productos')->references('id')->on('productos')->onDelete('cascade');
+            $table->unsignedBigInteger('user_id')->nullable();
+            $table->foreign('user_id')->references('id')->on('users');
             $table->timestamps();
+
         });
     }
-
+    
     /**
      * Reverse the migrations.
      */
