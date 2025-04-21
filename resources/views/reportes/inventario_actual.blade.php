@@ -108,7 +108,7 @@
                     <td>{{ $producto->nombre ?? 'Sin nombre' }}</td>
                     <td style="text-align: right;">
                         <span class="badge" style="background-color: #007bff; color: white;">
-                            {{ $producto->cantidad_total ?? 0 }}
+                            {{ $producto->cantidad ?? 0 }}
                         </span>
                     </td>
                     <td>
