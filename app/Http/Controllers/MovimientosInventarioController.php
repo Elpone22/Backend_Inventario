@@ -43,6 +43,37 @@ class MovimientosInventarioController extends Controller
             return response()->json($th->getMessage(), 500);
         }
     }
+
+    /**
+     * Obtiene los movimientos agrupados por producto
+     */
+    public function movimientosPorProducto()
+    {
+        try {
+            $movimientos = MovimientosInventario::select(
+                'productos.id',
+                'productos.nombre as producto',
+                \DB::raw('SUM(CASE WHEN movimientos_inventarios.tipoMov = "entrada" THEN movimientos_inventarios.cantidad ELSE 0 END) as entradas'),
+                \DB::raw('SUM(CASE WHEN movimientos_inventarios.tipoMov = "salida" THEN movimientos_inventarios.cantidad ELSE 0 END) as salidas'),
+                \DB::raw('COUNT(movimientos_inventarios.id) as total_movimientos')
+            )
+            ->join('productos', 'movimientos_inventarios.fk_productos', '=', 'productos.id')
+            ->groupBy('productos.id', 'productos.nombre')
+            ->havingRaw('COUNT(movimientos_inventarios.id) > 0')
+            ->get();
+
+            return response()->json([
+                'code' => 200,
+                'data' => $movimientos
+            ], 200);
+            
+        } catch (\Throwable $th) {
+            return response()->json([
+                'code' => 500,
+                'message' => $th->getMessage()
+            ], 500);
+        }
+    }
    
 
     /**
@@ -51,7 +82,7 @@ class MovimientosInventarioController extends Controller
     public function store(Request $request)
     {
         $rules = [
-            'cantidad' => 'required|numeric',
+            'cantidad' => 'required|numeric|min:1',
             'fecha' => 'required|date',
             'tipoMov' => 'required|in:Entrada,Salida',
             'fk_productos' => 'required|exists:productos,id',
@@ -157,7 +188,7 @@ class MovimientosInventarioController extends Controller
         try {
             // Se valida que todos los campos sean requeridos
             $validacion = Validator::make($request->all(), [
-                'cantidad' => 'required|numeric',
+                'cantidad' => 'required|numeric|min:1',
                 'fecha' => 'required|date',
                 'tipoMov' => 'required|in:Entrada,Salida',
                 'fk_productos' => 'required|exists:productos,id', // Validar que el producto exista
@@ -288,45 +319,65 @@ class MovimientosInventarioController extends Controller
 public function reporteMovimientosPorProducto(Request $request)
 {
     $productoId = $request->input('producto_id');
-    \Log::info("Generando reporte para producto ID: $productoId");
+    
+    // Obtener el producto con su imagen
+    $producto = Producto::with(['categoria', 'marca'])
+        ->findOrFail($productoId);
+    
+    // Obtener los movimientos del producto ordenados por fecha
+    $movimientos = MovimientosInventario::with('usuario')
+        ->where('fk_productos', $productoId)
+        ->orderBy('fecha', 'asc')
+        ->get();
+    
+    // Procesar la imagen del producto si existe
+    if ($producto->imagen && file_exists(public_path('storage/' . $producto->imagen))) {
+        $path = public_path('storage/' . $producto->imagen);
+        $producto->imagen_url = 'data:'.mime_content_type($path).';base64,'.base64_encode(file_get_contents($path));
+    } else {
+        $producto->imagen_url = null;
+    }
 
-    $movimientos = MovimientosInventario::with(['producto' => function($query) {
-        $query->when(method_exists(Producto::class, 'categoria'), function($q) {
-            $q->with('categoria');
-        })
-        ->when(method_exists(Producto::class, 'marca'), function($q) {
-            $q->with('marca');
-        });
-    }])
-    ->where('fk_productos', $productoId)
-    ->get()
-    ->map(function($movimiento) use ($productoId) {
-        if ($movimiento->producto && $movimiento->producto->imagen) {
-            $path = public_path('storage/' . $movimiento->producto->imagen);
-            \Log::info("Buscando imagen en: $path");
-            
-            if (file_exists($path)) {
-                $movimiento->producto->imagen_url = 'data:image/'.pathinfo($path, PATHINFO_EXTENSION).';base64,'.base64_encode(file_get_contents($path));
-                \Log::info("Imagen encontrada y convertida a base64");
-            } else {
-                \Log::error("Imagen NO encontrada en: $path");
-                $movimiento->producto->imagen_url = null;
-            }
+    // Preparar datos para la gráfica
+    $datosGrafica = [
+        'fechas' => [],
+        'entradas' => [],
+        'salidas' => [],
+        'saldos' => []
+    ];
+
+    $saldoActual = 0;
+    foreach ($movimientos as $movimiento) {
+        $fecha = \Carbon\Carbon::parse($movimiento->fecha)->format('d/m/Y');
+        $datosGrafica['fechas'][] = $fecha;
+        
+        if ($movimiento->tipoMov === 'entrada') {
+            $datosGrafica['entradas'][] = $movimiento->cantidad;
+            $saldoActual += $movimiento->cantidad;
+            $datosGrafica['salidas'][] = 0;
+        } else {
+            $datosGrafica['entradas'][] = 0;
+            $datosGrafica['salidas'][] = $movimiento->cantidad;
+            $saldoActual -= $movimiento->cantidad;
         }
-        return $movimiento;
-    });
+        $datosGrafica['saldos'][] = $saldoActual;
+    }
 
-    \Log::info("Datos para la vista:", [
-        'producto' => $movimientos->first()->producto ?? null,
-        'total_movimientos' => $movimientos->count()
-    ]);
+    // Convertir los datos a formato JSON para usarlos en JavaScript
+    $datosGraficaJson = json_encode($datosGrafica);
 
+    $producto = $movimientos->first()->producto ?? null;
+    $nombreProducto = $producto ? $producto->nombre : 'Producto Desconocido';
+
+    // Cargar la vista con los datos
     $pdf = Pdf::loadView('reportes.movimientos_por_producto', [
         'movimientos' => $movimientos,
-        'producto' => $movimientos->first()->producto ?? null
+        'producto' => $producto,
+        'datosGraficaJson' => $datosGraficaJson,
+        'nombreProducto' => $nombreProducto
     ]);
     
-    return $pdf->stream('reporte_movimientos_por_producto.pdf');
+    return $pdf->stream("reporte_movimientos_{$nombreProducto}_" . now()->format('Y-m-d') . ".pdf");
 }
 
 public function reporteInventarioActual()

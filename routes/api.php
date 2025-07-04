@@ -14,29 +14,35 @@ use App\Http\Controllers\MovimientosInventarioController;
 
 use Barryvdh\DomPDF\Facade\Pdf;
  
-//rutas para crud
-Route::middleware('auth:sanctum')->group(function () {
-  
-});
-
-
-//rutas para login
+// Rutas públicas
 Route::post('/user/login', [UserController::class, 'login']);
 Route::post('/user/register', [UserController::class, 'register']);
 
-Route::get('/user', function (Request $request) {
-    return $request->user();
-})->middleware('auth:sanctum');
+// Rutas protegidas por autenticación
+Route::middleware('auth:sanctum')->group(function () {
+    // Ruta de usuario actual
+    Route::get('/user', function (Request $request) {
+        return $request->user();
+    });
 
-Route::apiResource('/productos', ProductoController::class);
-Route::apiResource('/categorias', CategoriaController::class);
-Route::apiResource('/marcas', MarcaController::class);
-Route::apiResource('/users',UserController::class);
-Route::apiResource('/movimientos_inventarios', MovimientosInventarioController::class);
+    // Rutas de recursos
+    Route::apiResource('/productos', ProductoController::class);
+    Route::apiResource('/categorias', CategoriaController::class);
+    Route::apiResource('/marcas', MarcaController::class);
+    Route::apiResource('/users', UserController::class);
+    Route::apiResource('/movimientos_inventarios', MovimientosInventarioController::class);
+    Route::apiResource('/materias', MateriaController::class);
+    Route::apiResource('/manoobras', ManoobraController::class);
+    Route::apiResource('/maquinarias', MaquinariaController::class);
+    Route::apiResource('/proyectos', ProyectosController::class);
 
-Route::get('/reportes/movimientos-diarios', [MovimientosInventarioController::class, 'reporteMovimientosDiarios']);
-Route::get('/reportes/movimientos-por-producto', [MovimientosInventarioController::class, 'reporteMovimientosPorProducto']);
-Route::get('/reportes/inventario-actual', [MovimientosInventarioController::class, 'reporteInventarioActual']);
-
+    // Rutas de reportes
+    Route::prefix('reportes')->group(function () {
+        Route::get('/movimientos-diarios', [MovimientosInventarioController::class, 'reporteMovimientosDiarios']);
+        Route::get('/movimientos-por-producto', [MovimientosInventarioController::class, 'reporteMovimientosPorProducto']);
+        Route::get('/inventario-actual', [MovimientosInventarioController::class, 'reporteInventarioActual']);
+        Route::get('/movimientos-por-producto-detallado', [MovimientosInventarioController::class, 'movimientosPorProducto']);
+    });
+});
 
 

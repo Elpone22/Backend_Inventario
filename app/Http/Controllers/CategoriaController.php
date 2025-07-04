@@ -31,6 +31,7 @@ class CategoriaController extends Controller
         }
     }
 
+
     /**
      * Store a newly created resource in storage.
      */
@@ -95,7 +96,7 @@ class CategoriaController extends Controller
      * Update the specified resource in storage.
      */
     public function update(Request $request, string $id)
-    {
+    {   
         try {
             // Se valida que todos los campos sean requeridos
             $validacion = Validator::make($request->all(), [
